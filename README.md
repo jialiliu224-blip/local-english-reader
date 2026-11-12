@@ -50,11 +50,11 @@ zsh scripts/build.sh
 
 菜单栏“读”可停止、重听、打开输入窗口或退出；关闭结果卡不等于退出 App。没有开机自动启动。
 
-## 已知问题：Chrome 选区读取不稳定
+## Chrome 首次读取修复（0.8.1）
 
-已实际出现 Chrome 网页中选中了英文、按快捷键仍提示无法读取选区的情况；随后在未修改程序的情况下复测恢复。该问题尚未修复，不能据一次复测成功认定 Chrome 首次读取可靠。
+曾出现 Chrome 中已选中英文、快捷键仍提示读不到选区，之后复测又恢复的问题。0.8.1 在首次查询失败时，按需唤醒 Chrome 的辅助功能接口并短暂重试；正常选区直接返回。等待期间切换应用、再次触发或按“停止”会丢弃旧请求。不模拟复制、不扫描网页正文。
 
-Chrome 辅助功能接口的初始化时机是当前排查方向，尚未完成冷启动复现与根因验证。Chromium 的[技术说明](https://www.chromium.org/developers/design-documents/accessibility/)指出，完整辅助功能支持按需启用，但这不能单独证明本问题的原因。暂时可重新选中后重试，仍失败时使用手动粘贴入口；重试不保证恢复。
+Chromium 的[实现](https://chromium.googlesource.com/chromium/src.git/+/3e1d274d0fc77e076a18cf454dec27c963dac7d5/chrome/browser/chrome_browser_application_mac.mm)表明，接口启用可能延迟，因此不能只查一次便判定浏览器不支持选区。已增加初始化恢复、取消、应用切换与重试上限检查，并验证构建；对应本机修复版已由使用者完全退出并重新打开 Chrome，在 GitHub 页面选中 guide 后首次按 ⌥Esc，确认自动朗读并显示中文。这是一次本机冷启动验证，不代表所有机器和页面均已验收。其他 Chromium 浏览器和不暴露选区的页面仍不保证兼容。
 
 ## 常见问题
 

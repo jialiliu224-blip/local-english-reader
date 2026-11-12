@@ -5,7 +5,7 @@ mkdir -p "$project_dir/build/tests" "$project_dir/build/module-cache"
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONPATH="$project_dir/src"
 python3 -m unittest discover -s "$project_dir/tests" -p '*Tests.py'
-for pair in ReaderState:StateTests SelectionPolicy:SelectionPolicyTests PresentationPolicy:PresentationTests Lexicon:LexiconTests VoiceConfiguration:VoiceConfigurationTests; do
+for pair in ReaderState:StateTests SelectionPolicy:SelectionPolicyTests PresentationPolicy:PresentationTests Lexicon:LexiconTests VoiceConfiguration:VoiceConfigurationTests SelectionRecovery:SelectionRecoveryTests; do
  source_name="${pair%%:*}"
  test_name="${pair##*:}"
  swiftc -module-cache-path "$project_dir/build/module-cache" "$project_dir/src/$source_name.swift" "$project_dir/tests/$test_name.swift" -o "$project_dir/build/tests/$test_name"

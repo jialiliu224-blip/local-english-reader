@@ -28,25 +28,52 @@ import ApplicationServices
 }
 
 @MainActor enum SelectionCapture {
- static func currentSelectedText() throws -> String {
-  guard let pid=NSWorkspace.shared.frontmostApplication?.processIdentifier,pid != ProcessInfo.processInfo.processIdentifier else { throw NSError(domain:"请先在其他应用中选中英文",code:1) }
+ static var preparedChromePIDs=Set<pid_t>()
+ static func currentSelectedText(target:NSRunningApplication?) async throws -> String {
+  guard let target,target.processIdentifier != ProcessInfo.processInfo.processIdentifier else {
+   throw NSError(domain:"请先在其他应用中选中英文",code:1)
+  }
+  let pid=target.processIdentifier
   let app=AXUIElementCreateApplication(pid)
-  AXUIElementSetMessagingTimeout(app,0.6)
+  AXUIElementSetMessagingTimeout(app,0.25)
+  let isChrome=["com.google.Chrome","com.google.Chrome.beta","com.google.Chrome.dev","com.google.Chrome.canary","org.chromium.Chromium"].contains(target.bundleIdentifier ?? "")
+  do {
+   return try await SelectionRecovery.read(canWarmup:isChrome,isCurrent:{
+    !target.isTerminated && NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+   },probe:{ selectedText(in:app,pid:pid) },warmup:{
+    // Chromium activates accessibility lazily. Request it only after a failed
+    // selection read, at most once per process; do not toggle VoiceOver itself.
+    guard preparedChromePIDs.insert(pid).inserted else { return }
+    var role:CFTypeRef?
+    _=AXUIElementCopyAttributeValue(app,kAXRoleAttribute as CFString,&role)
+    _=AXUIElementSetAttributeValue(app,"AXEnhancedUserInterface" as CFString,kCFBooleanTrue)
+   })
+  } catch is CancellationError { throw CancellationError() }
+  catch SelectionRecovery.Failure.applicationChanged {
+   throw NSError(domain:"选区读取期间切换了应用，请重新选中英文后按快捷键。",code:4)
+  } catch {
+   throw NSError(domain:"没有读取到当前选区；请重新选中后重试，或使用阅读器的粘贴入口。",code:3)
+  }
+ }
+ static func selectedText(in app:AXUIElement,pid:pid_t)->String? {
   var focused:CFTypeRef?
-  guard AXUIElementCopyAttributeValue(app,kAXFocusedUIElementAttribute as CFString,&focused) == .success,let focused,CFGetTypeID(focused) == AXUIElementGetTypeID() else { throw NSError(domain:"当前应用没有提供可读取的英文选区，请改用粘贴入口",code:2) }
+  guard AXUIElementCopyAttributeValue(app,kAXFocusedUIElementAttribute as CFString,&focused) == .success,
+        let focused,CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
   var element=unsafeBitCast(focused,to:AXUIElement.self)
-  // Only inspect selection attributes on the focused element and its ancestors.
-  // Never scan page contents, read the clipboard, or simulate copy keys.
+  // Inspect selection attributes only on the focused element and ancestors.
+  // No page scanning, clipboard access, copy simulation, or window activation.
   for _ in 0..<8 {
+   guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { return nil }
    var value:CFTypeRef?
    if AXUIElementCopyAttributeValue(element,kAXSelectedTextAttribute as CFString,&value) == .success {
     let text=(value as? String) ?? (value as? NSAttributedString)?.string
     if let text=SelectionPolicy.selectedText(text,originalPID:pid,currentPID:NSWorkspace.shared.frontmostApplication?.processIdentifier) { return text }
    }
    var parent:CFTypeRef?
-   guard AXUIElementCopyAttributeValue(element,kAXParentAttribute as CFString,&parent) == .success,let parent,CFGetTypeID(parent) == AXUIElementGetTypeID() else { break }
+   guard AXUIElementCopyAttributeValue(element,kAXParentAttribute as CFString,&parent) == .success,
+         let parent,CFGetTypeID(parent) == AXUIElementGetTypeID() else { break }
    element=unsafeBitCast(parent,to:AXUIElement.self)
   }
-  throw NSError(domain:"没有读取到当前选区；请确认英文已选中。若此应用不提供选区，请复制后粘贴到阅读器。",code:3)
+  return nil
  }
 }

@@ -23,6 +23,8 @@ This repository is a source preview of Local English Reader, a native macOS app 
 
 ## Troubleshooting and verification
 
+- Version 0.8.1 requests Chrome accessibility activation only after a selection read fails, then retries for a bounded interval. Verify the first shortcut after a full browser restart; a warm browser success alone does not validate this fix. Never replace this check with a code-only test.
+
 - Missing configuration is expected on a fresh clone. Do not invent local paths, reference text or a replacement voice.
 - MLX import/API errors: verify the virtual environment and requirements; report dependency changes rather than silently upgrading everything.
 - Accessibility can stop matching after an ad-hoc-signed rebuild. Explain the issue and have the user re-add the final app in System Settings. A CLI trust check alone does not prove GUI access works.

@@ -9,6 +9,7 @@ import ApplicationServices
  var process:Process?, sound:NSSound?, translationTask:Task<Void,Never>?, timer:Timer?
  var translationTimer:Timer?
  var temp:URL?, errorText:String?, speechSoundID:UUID?
+ var captureTask:Task<Void,Never>?
  var globalHotKey:GlobalReadHotKey?
  var voiceBackend:Process?
  let resultPanel=ReadingResult()
@@ -84,8 +85,21 @@ import ApplicationServices
  func readGlobalSelection() {
   guard AXIsProcessTrusted() else { backgroundMode=true; requestedText=""; stop(); setStatus("需要辅助功能权限。请点击菜单栏“读” → 打开阅读器设置，再设置选区读取权限。",error:true); return }
   if NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier { readTyped(); return }
-  do { let text=try SelectionCapture.currentSelectedText(); input.string=text; window.orderOut(nil); begin(text,background:true) }
-  catch { backgroundMode=true; requestedText=""; stop(); setStatus((error as NSError).domain,error:true) }
+  let target=NSWorkspace.shared.frontmostApplication
+  stop(); backgroundMode=true
+  status.stringValue="正在读取选区…"
+  captureTask=Task { [weak self] in
+   guard let self else { return }
+   do {
+    let text=try await SelectionCapture.currentSelectedText(target:target)
+    try Task.checkCancellation()
+    self.captureTask=nil;self.input.string=text;self.window.orderOut(nil);self.begin(text,background:true)
+   } catch is CancellationError { return }
+   catch {
+    guard !Task.isCancelled else { return }
+    self.captureTask=nil;self.requestedText="";self.setStatus((error as NSError).domain,error:true)
+   }
+  }
  }
  func show() { window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps:true) }
  @objc func readSelection(_ pasteboard:NSPasteboard,userData:String?,error:AutoreleasingUnsafeMutablePointer<NSString?>) {
@@ -97,6 +111,7 @@ import ApplicationServices
   guard notification.object as? NSTextView === input else { return }; stop(); status.stringValue="英文已改变，请点击朗读并翻译。"
  }
  func cancelWork() {
+  captureTask?.cancel();captureTask=nil
   translationTimer?.invalidate(); translationTimer=nil
   translationTask?.cancel(); translationTask=nil; timer?.invalidate(); timer=nil
   if let process,process.isRunning { process.terminate() }; process=nil

@@ -5,7 +5,7 @@ bundle="$project_dir/build/Local English Reader.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources" "$project_dir/build/module-cache"
 swiftc -target arm64-apple-macos26.0 -module-cache-path "$project_dir/build/module-cache" \
  "$project_dir/src/ReaderState.swift" "$project_dir/src/SelectionPolicy.swift" \
- "$project_dir/src/GlobalHotKey.swift" "$project_dir/src/PresentationPolicy.swift" \
+ "$project_dir/src/SelectionRecovery.swift" "$project_dir/src/GlobalHotKey.swift" "$project_dir/src/PresentationPolicy.swift" \
  "$project_dir/src/ResultPanel.swift" "$project_dir/src/Lexicon.swift" \
  "$project_dir/src/VoiceConfiguration.swift" "$project_dir/src/App.swift" \
  -o "$bundle/Contents/MacOS/EnglishReader"
