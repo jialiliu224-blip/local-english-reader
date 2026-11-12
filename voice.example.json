@@ -1,0 +1,6 @@
+{
+  "python": "/absolute/path/to/venv/bin/python",
+  "model_path": "/absolute/path/to/Qwen3-TTS-12Hz-1.7B-Base-8bit",
+  "reference_audio": "/absolute/path/to/your-own-reference.wav",
+  "reference_text": "Replace this with the exact transcript of your own reference recording."
+}

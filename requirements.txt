@@ -1,0 +1,4 @@
+# Direct versions from the working local environment; not a full transitive lock.
+mlx-audio==0.4.6
+mlx==0.32.2
+numpy==2.4.6

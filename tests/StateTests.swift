@@ -1,0 +1,31 @@
+import Foundation
+@main struct Tests {
+ static func main() {
+  var s = ReaderState()
+  let first=s.begin()
+  s.translationReady("变量", id:first)
+  assert(s.visibleTranslation == nil, "朗读前不得展示中文")
+  s.speechFinished(id:first)
+  assert(s.visibleTranslation == "变量", "朗读后展示中文")
+  let next=s.begin()
+  assert(s.visibleTranslation == nil, "新请求清空旧结果")
+  s.translationReady("旧结果", id:first)
+  s.speechFinished(id:first)
+  assert(s.visibleTranslation == nil, "丢弃迟到回调")
+  s.speechFinished(id:next)
+  s.translationReady("返回", id:next)
+  assert(s.visibleTranslation == "返回", "翻译较慢时完成后再展示")
+  s.fail(id:next)
+  assert(s.visibleTranslation == nil, "失败不得显示旧译文")
+  let deadline=s.begin()
+  assert(s.translationTimedOut(id:deadline), "未完成翻译允许超时")
+  s.translationReady("超时后的旧译文",id:deadline)
+  s.speechFinished(id:deadline)
+  assert(s.visibleTranslation == nil,"超时后拒绝迟到结果")
+  let ready=s.begin()
+  s.translationReady("完成",id:ready)
+  assert(!s.translationTimedOut(id:ready),"已完成翻译不误报超时")
+  assert(!s.translationTimedOut(id:deadline),"过期请求不改变新状态")
+  print("PASS: 10 个顺序、并发、失败和超时断言")
+ }
+}
